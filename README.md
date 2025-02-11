@@ -184,7 +184,7 @@ static ASTNode *parse_assignment(void) {
 
 ## Testing and Debugging
 
-### Test Cases
+### Sample Test Cases
 ```c
 // Valid syntax
 int x;
@@ -223,12 +223,11 @@ void print_ast(ASTNode *node, int level) {
 ```
 
 ## Tips for Success
-- Start with the simplest possible implementation
+- Start with the most straightforward possible implementation
 - Add complexity incrementally
 - Test each feature thoroughly
 - Focus on error handling
 - Document your changes
-- Use provided test cases
 - Update AST printing for debugging
 
 ## Common Challenges
@@ -238,7 +237,7 @@ void print_ast(ASTNode *node, int level) {
 4. Supporting various language constructs
 
 ## Submission Requirements
-1. Complete implementation of parser.c
+1. Complete implementation of your custom parser.c
 2. Test files demonstrating your features
 3. Documentation of your:
    - Grammar rules
@@ -250,7 +249,7 @@ void print_ast(ASTNode *node, int level) {
 - [ ] Parse simple declarations
 - [ ] Handle basic assignments
 - [ ] Implement expression parsing
-- [ ] Add comprehensive error handling
+- [ ] Add error handling
 - [ ] Support more complex statements
 - [ ] Optimize AST generation
 
@@ -259,4 +258,4 @@ void print_ast(ASTNode *node, int level) {
 - Online parsing tutorials
 - Lecture notes on syntax analysis
 
-Good luck with your implementation! 🚀
+Good luck! 🚀
