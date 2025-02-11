@@ -1,7 +1,7 @@
 # Phase 2: Syntax Analysis - Parser Implementation
 
 ## Overview
-In this phase, you'll build upon your lexical analyzer to create a parser that constructs an Abstract Syntax Tree (AST) from the token stream. The parser validates the syntactic structure of the input according to the language grammar and creates a tree representation suitable for further processing.
+In this phase, you'll build upon your **custom lexical analyzer to create a parser** that constructs an Abstract Syntax Tree (AST) from the token stream. The parser validates the syntactic structure of the input according to the language grammar and creates a tree representation suitable for further processing.
 
 ## Understanding Parser Implementation and AST Transformation
 
