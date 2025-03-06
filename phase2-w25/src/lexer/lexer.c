@@ -170,6 +170,9 @@ void print_token(Token token) {
             break;
         case TOKEN_POINTER: 
             printf("POINTER");
+            break;
+        case TOKEN_COMMENT:
+            printf("COMMENT");
             break; 
         case TOKEN_EQUALS:     
             printf("EQUALS"); 
@@ -203,6 +206,18 @@ void print_token(Token token) {
             break; 
         case TOKEN_RETURN: 
             printf("RETURN");
+            break;
+        case TOKEN_FOR:
+            printf("FOR");
+            break; 
+        case TOKEN_WHILE:
+            printf("WHILE");
+            break; 
+        case TOKEN_DO:
+            printf("DO");
+            break; 
+        case TOKEN_BREAK:
+            printf("BREAK");
             break; 
         case TOKEN_CONTINUE:
             printf("CONTINUE");
@@ -490,7 +505,7 @@ Token get_next_token(const char* input, int* pos) {
     }
 
     // Handle character literals 
-    if(c == ' \''){
+    if(c == '\''){
         return handle_char(input, pos);
     }
 
@@ -535,7 +550,7 @@ Token get_next_token(const char* input, int* pos) {
     }
 
     // Handles String Literals 
-    if(c == '"'){
+    if(c == '\"'){
         return handle_string(input, pos);
     }
 
@@ -588,9 +603,28 @@ Token get_next_token(const char* input, int* pos) {
 
     // Handle Delimiter 
     if (strchr("(){}[];,", c)) {
-        token.type = TOKEN_DELIMITER;
         token.lexeme[0] = c;
         token.lexeme[1] = '\0';
+        switch(c){
+            case ';':
+                token.type = TOKEN_SEMICOLON;
+                break;
+            case '(':
+                token.type = TOKEN_LPAREN;
+                break;
+            case ')':
+                token.type = TOKEN_RPAREN;
+                break;
+            case '{':
+                token.type = TOKEN_LBRACE;
+                break;
+            case '}':
+                token.type = TOKEN_RBRACE;
+                break;
+            default:
+                token.error = ERROR_INVALID_CHAR;
+                break;
+        }
         advance_position(pos);
         last_token_type = 'd';
         return token;
@@ -606,6 +640,7 @@ Token get_next_token(const char* input, int* pos) {
     return token;
 
 
+    // //Handle Operator and Delimiter
     // (*pos)++;
     // token.lexeme[0] = c;
     // token.lexeme[1] = '\0';
@@ -645,6 +680,42 @@ Token get_next_token(const char* input, int* pos) {
     // return token;
 }
 
+/* Process test files */
+void process_test_file(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Could not open file %s\n", filename);
+        return;
+    }
+    
+    // Reset lexer state for new file
+    reset_lexer();
+    
+    char buffer[2048];
+    size_t len = fread(buffer, 1, sizeof(buffer) - 1, file);
+    buffer[len] = '\0';
+    fclose(file);
+    
+    int position = 0;
+    Token token;
+    printf("\n==============================\n");
+    printf("TESTING FILE: %s\n", filename);
+    printf("==============================\n");
+    printf("Input:\n%s\n\n", buffer);
+    
+    do {
+        token = get_next_token(buffer, &position);
+        print_token(token);
+        
+        if (token.recovery != RECOVERY_NONE) {
+            in_error_recovery = 1;
+        }
+    } while (token.type != TOKEN_EOF);
+    
+    printf("\nEnd of %s\n", filename);
+    printf("==============================\n");
+}
+
 // int main() {
 //     const char *input = "int x = 123;\n"   // Basic declaration and number
 //                        "test_var = 456;\n"  // Identifier and assignment
@@ -665,3 +736,12 @@ Token get_next_token(const char* input, int* pos) {
 //
 //     return 0;
 // }
+
+// This is a complete lexer for Backwards C
+
+// int main() {
+//     process_test_file("..\\test\\input_valid.txt");
+//     // process_test_file("test/input_invalid.txt");
+//     return 0;
+// }
+

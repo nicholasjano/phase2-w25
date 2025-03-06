@@ -54,8 +54,7 @@ typedef enum {
     TOKEN_ELSE,        // else keyword
     TOKEN_VOID_STAR,   // void* keyword 
     TOKEN_INT_STAR,    // int* keyword 
-    TOKEN_PRINT,       // print keyword
-    TOKEN_ERROR  
+    TOKEN_PRINT,       // print keyword 
 } TokenType;
 
 
