@@ -315,26 +315,54 @@ void free_ast(ASTNode *node) {
 }
 
 
-// Main function for testing
-int main() {
-    // Test with both valid and invalid inputs
-    const char *valid_input = "tni x;\n" // Valid declaration
-            "x = 42;\n"; // Valid assignment;
-    // TODO 8: Add more test cases and read from a file:
-    const char *invalid_input = "tni x;\n"
-                                "x = 42;\n"
-                                "tni ;";
-
-    // printf("TOKEN Stream: \n");
-    // print_token_stream(valid_input);
-
-    printf("Parsing input:\n%s\n", valid_input);
-    parser_init(valid_input);
+/* Process test files */
+void proc_test_file(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Could not open file %s\n", filename);
+        return;
+    }
+    
+    char buffer[2048];
+    size_t len = fread(buffer, 1, sizeof(buffer) - 1, file);
+    buffer[len] = '\0';
+    fclose(file);
+    
+    printf("Parsing input:\n%s\n", buffer);
+    parser_init(buffer);
     ASTNode *ast = parse();
 
     printf("\nAbstract Syntax Tree:\n");
     print_ast(ast, 0);
 
     free_ast(ast);
+}
+
+
+// Main function for testing
+int main() {
+    // // Test with both valid and invalid inputs
+    // const char *valid_input = "tni x;\n" // Valid declaration
+    //         "x = 42;\n"; // Valid assignment;
+
+    // TODO 8: Add more test cases and read from a file: (DONE)
+    proc_test_file("test/input_valid.txt");
+    proc_test_file("test/input_invalid.txt");
+
+    // const char *invalid_input = "tni x;\n"
+    //                             "x = 42;\n"
+    //                             "tni ;";
+
+    // printf("TOKEN Stream: \n");
+    // print_token_stream(valid_input);
+
+    // printf("Parsing input:\n%s\n", valid_input);
+    // parser_init(valid_input);
+    // ASTNode *ast = parse();
+
+    // printf("\nAbstract Syntax Tree:\n");
+    // print_ast(ast, 0);
+
+    // free_ast(ast);
     return 0;
 }
