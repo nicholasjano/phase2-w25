@@ -49,7 +49,7 @@ typedef enum {
     TOKEN_SIGNED,      // signed keyword
     TOKEN_SHORT,       // short keyword 
     TOKEN_LONG,        // long keyword 
-    TOKEN_FLOAT_KEY,       // float keyword 
+    TOKEN_FLOAT_KEY,   // float keyword 
     TOKEN_DOUBLE,      // double keyword 
     TOKEN_ELSE,        // else keyword
     TOKEN_VOID_STAR,   // void* keyword 

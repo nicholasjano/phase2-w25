@@ -577,7 +577,12 @@ Token get_next_token(const char* input, int* pos) {
             return token;
         }
         
-        token.type = TOKEN_OPERATOR;
+        if(c == '='){
+            token.type = TOKEN_EQUALS; 
+        }
+        else{
+            token.type = TOKEN_OPERATOR; 
+        }
         token.lexeme[0] = c;
         
         // Check for two-character operators
