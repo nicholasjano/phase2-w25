@@ -18,6 +18,7 @@ static struct {
     {"if", TOKEN_IF},
     {"int", TOKEN_INT},
     {"print", TOKEN_PRINT}
+    {"while", TOKEN_WHILE}
 };
 
 static int is_keyword(const char* word) {
