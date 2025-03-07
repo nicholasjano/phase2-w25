@@ -122,7 +122,6 @@ static void expect(TokenType type) {
 
 ### 3. Special Features
 - [ ] Factorial function support
-- [ ] Runtime error detection
 - [ ] Block scoping
 
 ### 4. Error Handling
