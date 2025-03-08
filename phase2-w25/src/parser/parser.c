@@ -18,12 +18,11 @@ static int last_reported_line = 0;
 static int last_reported_column = 0;
 
 // Forward declarations for utility functions
-static void parse_error(ParseError error, Token token);
+void parse_error(ParseError error, Token token);
 static void advance(void);
 static ASTNode *create_node(ASTNodeType type);
 static int match(TokenType type);
 static void synchronize(void);
-static void consume(TokenType type, ParseError error_type);
 
 // Forward declarations for expression parsing
 static ASTNode* parse_primary_expression(void);
@@ -47,8 +46,21 @@ static ASTNode* parse_declaration(void);
 static ASTNode* parse_assignment(void);
 static ASTNode* parse_program(void);
 
-// Error reporting
-static void parse_error(ParseError error, Token token) {
+// Reset all parser state variables
+static void reset_parser_state(void) {
+    position = 0;
+    pos2 = 0;
+    source = NULL;
+    last_reported_line = 0;
+    last_reported_column = 0;
+    error_reporting_enabled = 1;
+    
+    // Reset the lexer state too
+    reset_lexer();
+}
+
+// Error reporting - now public to be called from more places
+void parse_error(ParseError error, Token token) {
     // Only report errors if reporting is enabled
     if (!error_reporting_enabled) {
         return;
@@ -107,14 +119,12 @@ static void parse_error(ParseError error, Token token) {
 
 // Get next token
 static void advance(void) {
+    // Get the next token
     current_token = get_next_token(source, &position);
     
     // Skip comments and error tokens during error recovery
     while (current_token.type == TOKEN_ERROR || current_token.type == TOKEN_SKIP || current_token.type == TOKEN_COMMENT) {
-        if (current_token.type == TOKEN_ERROR) {
-            printf("Skipping invalid token '%s' at line %d\n", 
-                  current_token.lexeme, current_token.line);
-        }
+        // The error reporting is now handled by the lexer, we don't need to do it here
         current_token = get_next_token(source, &position);
     }
 }
@@ -168,22 +178,6 @@ static void synchronize(void) {
     }
 }
 
-// Function to consume a specific token type or report error
-static void consume(TokenType type, ParseError error_type) {
-    if (match(type)) {
-        advance();
-    } else {
-        // Special case for EOF - don't report errors for EOF token
-        if (current_token.type == TOKEN_EOF) {
-            return;
-        }
-        parse_error(error_type, current_token);
-        synchronize();
-    }
-}
-
-// TODO 3: Add parsing functions for each new statement type
-
 // Parse primary expression (identifier, number, or parenthesized expression)
 static ASTNode *parse_primary_expression(void) {
     ASTNode *node;
@@ -210,6 +204,7 @@ static ASTNode *parse_primary_expression(void) {
                     factorial_node->left->token.lexeme[0] = '0';
                     factorial_node->left->token.lexeme[1] = '\0';
                     advance(); // Consume ')'
+                    free(node); // Free the original identifier node
                     return factorial_node;
                 }
                 
@@ -220,10 +215,12 @@ static ASTNode *parse_primary_expression(void) {
                 if (!match(TOKEN_RPAREN)) {
                     parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
                     synchronize();
+                    free(node); // Free the original identifier node
                     return factorial_node;
                 }
                 advance(); // Consume ')'
                 
+                free(node); // Free the original identifier node
                 return factorial_node;
             } else {
                 // Generic function call
@@ -240,10 +237,12 @@ static ASTNode *parse_primary_expression(void) {
                 if (!match(TOKEN_RPAREN)) {
                     parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
                     synchronize();
+                    free(node); // Free the original identifier node
                     return call_node;
                 }
                 advance(); // Consume ')'
                 
+                free(node); // Free the original identifier node
                 return call_node;
             }
         }
@@ -255,9 +254,10 @@ static ASTNode *parse_primary_expression(void) {
         if (!match(TOKEN_LPAREN)) {
             parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
             
-            // Special case: if we see a closing parenthesis, try to continue
+            // Check for special error case: factorial immediately followed by closing parenthesis
             if (match(TOKEN_RPAREN)) {
                 ASTNode *node = create_node(AST_FACTORIAL);
+                parse_error(PARSE_ERROR_INVALID_FUNCTION_CALL, current_token);
                 advance(); // Consume ')'
                 return node;
             }
@@ -433,10 +433,11 @@ static ASTNode *parse_expression(void) {
 // Parse variable declaration: tni x;
 static ASTNode *parse_declaration(void) {
     ASTNode *node = create_node(AST_VARDECL);
+    Token type_token = current_token; // Save the type token
     advance(); // consume type keyword (like 'tni')
 
     if (!match(TOKEN_IDENTIFIER)) {
-        parse_error(PARSE_ERROR_MISSING_IDENTIFIER, current_token);
+        parse_error(PARSE_ERROR_MISSING_IDENTIFIER, type_token);
         synchronize();
         return node;
     }
@@ -450,7 +451,12 @@ static ASTNode *parse_declaration(void) {
         node->right = parse_expression();
     }
 
-    consume(TOKEN_SEMICOLON, PARSE_ERROR_MISSING_SEMICOLON);
+    if (!match(TOKEN_SEMICOLON)) {
+        parse_error(PARSE_ERROR_MISSING_SEMICOLON, current_token);
+        // Continue parsing without consuming the token
+    } else {
+        advance(); // Consume semicolon if present
+    }
     
     return node;
 }
@@ -458,10 +464,11 @@ static ASTNode *parse_declaration(void) {
 // Parse function declaration with parameter handling
 static ASTNode *parse_function_declaration(void) {
     ASTNode *node = create_node(AST_FUNCTION_DECL);
+    Token type_token = current_token; // Save the return type token
     advance(); // consume type (like 'tni')
 
     if (!match(TOKEN_IDENTIFIER)) {
-        parse_error(PARSE_ERROR_MISSING_IDENTIFIER, current_token);
+        parse_error(PARSE_ERROR_MISSING_IDENTIFIER, type_token);
         synchronize();
         return node;
     }
@@ -470,41 +477,77 @@ static ASTNode *parse_function_declaration(void) {
     advance(); // consume function name
 
     // Parse parameters
-    consume(TOKEN_LPAREN, PARSE_ERROR_MISSING_PARENTHESES);
+    if (!match(TOKEN_LPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+    } else {
+        advance(); // Consume '('
+    }
+    
+    // Create a parameter list that will become the left child of the function declaration
+    ASTNode *param_list = NULL;
+    ASTNode *current_param = NULL;
     
     // Handle parameters
-    // TODO: currently just skipping, but later create parameter nodes
     if (match(TOKEN_VOID)) {
-        advance(); // consume 'diov' parameter
+        // No parameters (void)
+        advance();
     }
     else {
-        // Skip over parameter list without requiring commas
-        // In a full implementation, we'd parse each parameter and add it to a parameter list
+        // Parse parameter list
         while (!match(TOKEN_RPAREN) && !match(TOKEN_EOF)) {
-            // Skip over parameter type
-            if (match(TOKEN_INT) || match(TOKEN_FLOAT_KEY) || match(TOKEN_CHAR) ||
-                match(TOKEN_VOID) || match(TOKEN_LONG) || match(TOKEN_SHORT) ||
-                match(TOKEN_DOUBLE)) {
-                advance();
+            // Parameter type
+            if (!match(TOKEN_INT) && !match(TOKEN_FLOAT_KEY) && !match(TOKEN_CHAR) &&
+                !match(TOKEN_VOID) && !match(TOKEN_LONG) && !match(TOKEN_SHORT) &&
+                !match(TOKEN_DOUBLE) && !match(TOKEN_SIGNED) && !match(TOKEN_UNSIGNED)) {
+                parse_error(PARSE_ERROR_UNEXPECTED_TOKEN, current_token);
+                break;
             }
             
-            // Skip over parameter name
-            if (match(TOKEN_IDENTIFIER)) {
-                advance();
+            // Create parameter node
+            ASTNode *param = create_node(AST_VARDECL);
+            Token param_type = current_token; // Save parameter type
+            advance();
+            
+            // Parameter name
+            if (!match(TOKEN_IDENTIFIER)) {
+                parse_error(PARSE_ERROR_MISSING_IDENTIFIER, param_type);
+                free(param); // Free unused node
+                break;
             }
             
-            // Skip commas
+            // Save parameter name to node
+            param->token = current_token;
+            advance();
+            
+            // Add parameter to list
+            if (param_list == NULL) {
+                param_list = param;
+                current_param = param;
+            } else {
+                current_param->right = param;
+                current_param = param;
+            }
+            
+            // Handle comma for multiple parameters
             if (match(TOKEN_COMMA)) {
                 advance();
+            } else {
+                break; // End of parameter list
             }
-            else break; // If not a comma, we're done with parameters
         }
     }
 
-    consume(TOKEN_RPAREN, PARSE_ERROR_MISSING_PARENTHESES);
+    if (!match(TOKEN_RPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+    } else {
+        advance(); // Consume ')'
+    }
     
-    // Parse function body
-    node->left = parse_block();
+    // Set parameter list as the left child
+    node->left = param_list;
+    
+    // Parse function body as the right child
+    node->right = parse_block();
     return node;
 }
 
@@ -515,16 +558,39 @@ static ASTNode *parse_assignment(void) {
     node->left->token = current_token;
     advance();
 
-    consume(TOKEN_EQUALS, PARSE_ERROR_MISSING_EQUALS);
+    if (!match(TOKEN_EQUALS)) {
+        parse_error(PARSE_ERROR_MISSING_EQUALS, node->left->token);
+        
+        // Clean up if we can't continue
+        free_ast(node->left);
+        free(node);
+        
+        synchronize();
+        return create_node(AST_PROGRAM); // Return a dummy node
+    }
+    
+    advance(); // Consume '='
+    
     node->right = parse_expression();
-    consume(TOKEN_SEMICOLON, PARSE_ERROR_MISSING_SEMICOLON);
+    
+    if (!match(TOKEN_SEMICOLON)) {
+        parse_error(PARSE_ERROR_MISSING_SEMICOLON, current_token);
+    } else {
+        advance(); // Consume semicolon if present
+    }
     
     return node;
 }
 
 // Parse block with improved handling
 static ASTNode *parse_block(void) {
-    consume(TOKEN_LBRACE, PARSE_ERROR_BLOCK_BRACES);
+    if (!match(TOKEN_LBRACE)) {
+        parse_error(PARSE_ERROR_BLOCK_BRACES, current_token);
+        // Create an empty block node
+        return create_node(AST_BLOCK);
+    }
+    
+    advance(); // Consume '{'
     
     // Handle empty block
     if (match(TOKEN_RBRACE)) {
@@ -546,19 +612,43 @@ static ASTNode *parse_block(void) {
         }
     }
 
-    consume(TOKEN_RBRACE, PARSE_ERROR_BLOCK_BRACES);
+    if (!match(TOKEN_RBRACE)) {
+        parse_error(PARSE_ERROR_BLOCK_BRACES, current_token);
+    } else {
+        advance(); // Consume '}'
+    }
     
     return block;
 }
 
-// Parse if statement
+// Parse if statement with enhanced error handling
 static ASTNode *parse_if_statement(void) {
     ASTNode *node = create_node(AST_IF);
     advance(); // consume 'fi'
 
-    consume(TOKEN_LPAREN, PARSE_ERROR_MISSING_PARENTHESES);
-    node->left = parse_expression(); // Parse condition
-    consume(TOKEN_RPAREN, PARSE_ERROR_MISSING_PARENTHESES);
+    if (!match(TOKEN_LPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+    } else {
+        advance(); // Consume '('
+    }
+    
+    // Handle empty condition
+    if (match(TOKEN_RPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_CONDITION, current_token);
+        // Create a dummy condition
+        node->left = create_node(AST_NUMBER);
+        node->left->token.lexeme[0] = '0';
+        node->left->token.lexeme[1] = '\0';
+        advance(); // Consume ')'
+    } else {
+        node->left = parse_expression(); // Parse condition
+        
+        if (!match(TOKEN_RPAREN)) {
+            parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+        } else {
+            advance(); // Consume ')'
+        }
+    }
 
     node->right = parse_block(); // Parse 'if' block
     
@@ -576,20 +666,41 @@ static ASTNode *parse_if_statement(void) {
     return node;
 }
 
-// Parse while loop: elihw (condition) { statements }
+// Parse while loop with enhanced error handling
 static ASTNode *parse_while_statement(void) {
     ASTNode *node = create_node(AST_WHILE);
     advance(); // consume 'elihw'
 
-    consume(TOKEN_LPAREN, PARSE_ERROR_MISSING_PARENTHESES);
-    node->left = parse_expression(); // Parse condition
-    consume(TOKEN_RPAREN, PARSE_ERROR_MISSING_PARENTHESES);
+    if (!match(TOKEN_LPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+    } else {
+        advance(); // Consume '('
+    }
+    
+    // Handle empty condition
+    if (match(TOKEN_RPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_CONDITION, current_token);
+        // Create a dummy condition
+        node->left = create_node(AST_NUMBER);
+        node->left->token.lexeme[0] = '0';
+        node->left->token.lexeme[1] = '\0';
+        advance(); // Consume ')'
+    } else {
+        node->left = parse_expression(); // Parse condition
+        
+        if (!match(TOKEN_RPAREN)) {
+            parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+        } else {
+            advance(); // Consume ')'
+        }
+    }
+    
     node->right = parse_block(); // Parse loop body
     
     return node;
 }
 
-// Parse repeat-until loop: taeper { statements } litnu (condition);
+// Parse repeat-until loop with enhanced error handling
 static ASTNode *parse_repeat_until_statement(void) {
     ASTNode *node = create_node(AST_FOR); // Reusing FOR node type for repeat-until
     advance(); // consume 'taeper'
@@ -598,15 +709,41 @@ static ASTNode *parse_repeat_until_statement(void) {
 
     if (!match(TOKEN_UNTIL)) {
         parse_error(PARSE_ERROR_UNEXPECTED_TOKEN, current_token);
+        // Expected 'until' token but not found
         synchronize();
         return node;
     }
     advance(); // consume 'litnu'
 
-    consume(TOKEN_LPAREN, PARSE_ERROR_MISSING_PARENTHESES);
-    node->right = parse_expression(); // Parse condition
-    consume(TOKEN_RPAREN, PARSE_ERROR_MISSING_PARENTHESES);
-    consume(TOKEN_SEMICOLON, PARSE_ERROR_MISSING_SEMICOLON);
+    if (!match(TOKEN_LPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+    } else {
+        advance(); // Consume '('
+    }
+    
+    // Handle empty condition
+    if (match(TOKEN_RPAREN)) {
+        parse_error(PARSE_ERROR_MISSING_CONDITION, current_token);
+        // Create a dummy condition
+        node->right = create_node(AST_NUMBER);
+        node->right->token.lexeme[0] = '0';
+        node->right->token.lexeme[1] = '\0';
+        advance(); // Consume ')'
+    } else {
+        node->right = parse_expression(); // Parse condition
+        
+        if (!match(TOKEN_RPAREN)) {
+            parse_error(PARSE_ERROR_MISSING_PARENTHESES, current_token);
+        } else {
+            advance(); // Consume ')'
+        }
+    }
+    
+    if (!match(TOKEN_SEMICOLON)) {
+        parse_error(PARSE_ERROR_MISSING_SEMICOLON, current_token);
+    } else {
+        advance(); // Consume ';'
+    }
     
     return node;
 }
@@ -617,7 +754,12 @@ static ASTNode *parse_print_statement(void) {
     advance(); // consume 'tnirp'
 
     node->left = parse_expression(); // Parse expression to print
-    consume(TOKEN_SEMICOLON, PARSE_ERROR_MISSING_SEMICOLON);
+    
+    if (!match(TOKEN_SEMICOLON)) {
+        parse_error(PARSE_ERROR_MISSING_SEMICOLON, current_token);
+    } else {
+        advance(); // Consume semicolon if present
+    }
     
     return node;
 }
@@ -630,7 +772,11 @@ static ASTNode *parse_return_statement(void) {
     // Parse the return value expression
     node->left = parse_expression();
     
-    consume(TOKEN_SEMICOLON, PARSE_ERROR_MISSING_SEMICOLON);
+    if (!match(TOKEN_SEMICOLON)) {
+        parse_error(PARSE_ERROR_MISSING_SEMICOLON, current_token);
+    } else {
+        advance(); // Consume semicolon if present
+    }
     
     return node;
 }
@@ -643,6 +789,7 @@ static ASTNode *parse_statement(void) {
         
         // Look ahead to see if this is a function declaration
         int save_position = position;
+        Token save_token = current_token;
         
         advance(); // consume type
         
@@ -652,14 +799,14 @@ static ASTNode *parse_statement(void) {
             if (match(TOKEN_LPAREN)) {
                 // This is a function declaration
                 position = save_position; // Backtrack to the type token
-                advance(); // Re-read the type token
+                current_token = save_token; // Restore the saved token
                 return parse_function_declaration();
             }
         }
         
         // Not a function declaration, backtrack
         position = save_position; // Return to the type token
-        advance(); // Re-read the type token
+        current_token = save_token; // Restore the saved token
         
         return parse_declaration();
     } else if (match(TOKEN_IDENTIFIER)) {
@@ -678,6 +825,8 @@ static ASTNode *parse_statement(void) {
         return parse_block();
     } else if (match(TOKEN_ELSE)) {
         parse_error(PARSE_ERROR_UNEXPECTED_TOKEN, current_token);
+        printf("Parse Error at line %d, column %d: Unmatched 'else' without preceding 'if'\n", 
+               current_token.line, current_token.column);
         advance(); // Skip 'else'
         
         // Still parse the else block to recover gracefully
@@ -708,6 +857,7 @@ static ASTNode *parse_program(void) {
         match(TOKEN_DOUBLE)) {
         // Look ahead to see if this is a function declaration
         int save_position = position;
+        Token save_token = current_token;
         
         advance(); // consume type
         
@@ -717,7 +867,7 @@ static ASTNode *parse_program(void) {
             if (match(TOKEN_LPAREN)) {
                 // This is a function declaration
                 position = save_position; // Backtrack to the type token
-                advance(); // Re-read the type token
+                current_token = save_token; // Restore the saved token
                 program->left = parse_function_declaration();
                 
                 // Parse any additional statements after the function
@@ -731,7 +881,7 @@ static ASTNode *parse_program(void) {
         
         // Not a function declaration, backtrack
         position = save_position; // Return to the type token
-        advance(); // Re-read the type token
+        current_token = save_token; // Restore the saved token
     }
     
     // Regular statement handling
@@ -816,7 +966,7 @@ void print_ast(ASTNode *node, int level) {
             printf("Factorial Function\n");
             break;
         case AST_FUNCTION_CALL:
-            printf("Function Call\n");
+            printf("Function Call: %s\n", node->token.lexeme);
             break;
         case AST_RETURN:
             printf("Return Statement\n");
@@ -859,6 +1009,9 @@ void proc_test_file(const char *filename) {
         printf("Error: Could not open file %s\n", filename);
         return;
     }
+    
+    // Reset everything for each file
+    reset_parser_state();
     
     char buffer[2048];
     size_t len = fread(buffer, 1, sizeof(buffer) - 1, file);

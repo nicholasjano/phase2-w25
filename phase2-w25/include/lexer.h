@@ -8,5 +8,7 @@
 Token get_next_token(const char* input, int* pos);
 void print_token(Token token);
 void print_error(ErrorType error, int line, const char* lexeme);
+void reset_lexer(void);
+void clear_error_state(void);
 
 #endif /* LEXER_H */
