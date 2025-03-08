@@ -1,25 +1,59 @@
-// Invalid Backwards C program with lexical errors
+// Invalid Backwards C program example
 tni niam(diov) {
-    // Invalid identifier with special character
-    tni x@ = 42;
-
-    // Unterminated string
-    rahc* gnirts = "Hello World;
-
-    // Invalid number format
-    tni y = 042.1.2;
-
-    // Invalid operators (consecutive)
-    x === 5;
-
-    // Invalid character in identifier
-    tni my#var = 10;
-
-    // Invalid escape sequence in string
-    rahc* rts = "Hello\k World";
-
-    // String that's too long (over token limit)
-    rahc* gnol_gnirts = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long string";
-
+    // Missing semicolon
+    tni a = 10
+    
+    // Invalid expression
+    tni b = 20 + ;
+    
+    // Unbalanced parentheses
+    fi (c > 100 {
+        tnirp "Missing closing parenthesis";
+    }
+    
+    // Missing identifiers
+    tni = 30;
+    
+    // Invalid operators
+    c = a +++ b;
+    
+    // Unbalanced braces
+    elihw (a > 0) {
+        tnirp a;
+        a = a - 1;
+    
+    // Invalid repeat-until
+    taeper {
+        b = b + 1;
+        tnirp b;
+    litnu (b > 25);
+    
+    // Invalid factorial call
+    tni factorial_result = lairotcaf);
+    
+    // Missing conditional expression
+    fi () {
+        tnirp "Missing condition";
+    }
+    
+    // Unmatched else
+    esle {
+        tnirp "No matching if statement";
+    }
+    
+    // Empty block
+    {}
+    
+    // Nested block errors
+    {
+        {
+            tnirp "Unbalanced block";
+    }
+    
+    // Incorrect logical operators
+    fi (a === b || c &&& d) {
+        tnirp "Invalid logical operators";
+    }
+    
     nruter 0;
 }

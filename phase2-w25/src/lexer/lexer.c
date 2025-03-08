@@ -74,9 +74,12 @@ static struct {
     {"taolf", TOKEN_FLOAT_KEY},
     {"elbuod", TOKEN_DOUBLE},
     {"esle", TOKEN_ELSE}, 
-    {"diov*", TOKEN_VOID},
+    {"diov*", TOKEN_VOID_STAR},
     {"tni*", TOKEN_INT_STAR},
-    {"tnirp", TOKEN_PRINT}, 
+    {"tnirp", TOKEN_PRINT},
+    {"taeper", TOKEN_REPEAT},
+    {"litnu", TOKEN_UNTIL},
+    {"lairotcaf", TOKEN_FACTORIAL}
 };
 
 // Check if a string is a keyword 
@@ -159,6 +162,24 @@ void print_token(Token token) {
         case TOKEN_OPERATOR:
             printf("OPERATOR");
             break;
+        case TOKEN_EQUALS_EQUALS:
+            printf("EQUALS_EQUALS");
+            break;
+        case TOKEN_NOT_EQUALS:
+            printf("NOT_EQUALS");
+            break;
+        case TOKEN_LOGICAL_AND:
+            printf("LOGICAL_AND");
+            break;
+        case TOKEN_LOGICAL_OR:
+            printf("LOGICAL_OR");
+            break;
+        case TOKEN_GREATER_EQUALS:
+            printf("GREATER_EQUALS");
+            break;
+        case TOKEN_LESS_EQUALS:
+            printf("LESS_EQUALS");
+            break;
         case TOKEN_IDENTIFIER:
             printf("IDENTIFIER");
             break;
@@ -191,6 +212,9 @@ void print_token(Token token) {
             break;
         case TOKEN_RBRACE:     
             printf("RBRACE"); 
+            break;
+        case TOKEN_COMMA:
+            printf("COMMA");
             break;
         case TOKEN_IF:         
             printf("IF"); 
@@ -287,6 +311,15 @@ void print_token(Token token) {
             break;
         case TOKEN_PRINT:      
             printf("PRINT"); 
+            break;
+        case TOKEN_REPEAT:
+            printf("REPEAT");
+            break;
+        case TOKEN_UNTIL:
+            printf("UNTIL");
+            break;
+        case TOKEN_FACTORIAL:
+            printf("FACTORIAL");
             break;
         case TOKEN_EOF:        
             printf("EOF"); 
@@ -567,37 +600,77 @@ Token get_next_token(const char* input, int* pos) {
 
     // Handle Operators 
     if (strchr("+-*/=<>!&|", c)) {
-        if (last_token_type == 'o') {
-            token.error = ERROR_CONSECUTIVE_OPERATORS;
+        // Single character operators and equality operators
+        if (c == '=') {
             token.lexeme[0] = c;
-            token.lexeme[1] = '\0';
-            token.recovery = RECOVERY_TO_DELIMITER;
-            advance_position(pos);
-            in_error_recovery = 1;
-            return token;
-        }
-        
-        if(c == '='){
-            token.type = TOKEN_EQUALS; 
-        }
-        else{
-            token.type = TOKEN_OPERATOR; 
-        }
-        token.lexeme[0] = c;
-        
-        // Check for two-character operators
-        char next = input[*pos + 1];
-        if ((c == '=' && next == '=') ||
-            (c == '!' && next == '=') ||
-            (c == '<' && next == '=') ||
-            (c == '>' && next == '=') ||
-            (c == '&' && next == '&') ||
-            (c == '|' && next == '|')) {
-            token.lexeme[1] = next;
+            if (input[*pos + 1] == '=') {
+                token.type = TOKEN_EQUALS_EQUALS;
+                token.lexeme[1] = '=';
+                token.lexeme[2] = '\0';
+                *pos += 2;
+                current_column += 2;
+            } else {
+                token.type = TOKEN_EQUALS;
+                token.lexeme[1] = '\0';
+                advance_position(pos);
+            }
+        } 
+        // Logical operators
+        else if (c == '&' && input[*pos + 1] == '&') {
+            token.type = TOKEN_LOGICAL_AND;
+            token.lexeme[0] = '&';
+            token.lexeme[1] = '&';
             token.lexeme[2] = '\0';
             *pos += 2;
             current_column += 2;
-        } else {
+        }
+        else if (c == '|' && input[*pos + 1] == '|') {
+            token.type = TOKEN_LOGICAL_OR;
+            token.lexeme[0] = '|';
+            token.lexeme[1] = '|';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        // Comparison operators
+        else if (c == '!' && input[*pos + 1] == '=') {
+            token.type = TOKEN_NOT_EQUALS;
+            token.lexeme[0] = '!';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        else if (c == '<' && input[*pos + 1] == '=') {
+            token.type = TOKEN_LESS_EQUALS;
+            token.lexeme[0] = '<';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        else if (c == '>' && input[*pos + 1] == '=') {
+            token.type = TOKEN_GREATER_EQUALS;
+            token.lexeme[0] = '>';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        // Basic operators
+        else {
+            if (last_token_type == 'o') {
+                token.error = ERROR_CONSECUTIVE_OPERATORS;
+                token.lexeme[0] = c;
+                token.lexeme[1] = '\0';
+                token.recovery = RECOVERY_TO_DELIMITER;
+                advance_position(pos);
+                in_error_recovery = 1;
+                return token;
+            }
+            
+            token.type = TOKEN_OPERATOR;
+            token.lexeme[0] = c;
             token.lexeme[1] = '\0';
             advance_position(pos);
         }
@@ -626,8 +699,11 @@ Token get_next_token(const char* input, int* pos) {
             case '}':
                 token.type = TOKEN_RBRACE;
                 break;
+            case ',':
+                token.type = TOKEN_COMMA;
+                break;
             default:
-                token.error = ERROR_INVALID_CHAR;
+                token.type = TOKEN_DELIMITER;
                 break;
         }
         advance_position(pos);

@@ -11,14 +11,19 @@ typedef enum {
     AST_ASSIGN,         // Assignment (x = 5)
     AST_PRINT,          // Print statement
     AST_NUMBER,         // Number literal
+    AST_STRING,         // String literal
     AST_OPERATOR,       // Operators such as +,-,*,/
     AST_IDENTIFIER,     // Variable name
     AST_IF,             // IF keyword
+    AST_ELSE,           // ELSE keyword (for else statements)
     AST_WHILE,          // WHILE keyword   
-    AST_FOR,            // FOR keyword
+    AST_FOR,            // FOR keyword (also used for repeat-until)
     AST_BLOCK,          // BLOCK keyword
-    AST_BINOP           // Binary operations 
-    // TODO: Add more node types as needed
+    AST_BINOP,          // Binary operations
+    AST_FACTORIAL,      // Factorial function
+    AST_FUNCTION_CALL,  // Generic function call
+    AST_RETURN,         // Return statement
+    AST_FUNCTION_DECL   // Function declaration
 } ASTNodeType;
 
 typedef enum {
@@ -49,5 +54,7 @@ void parser_init(const char* input);
 ASTNode* parse(void);
 void print_ast(ASTNode* node, int level);
 void free_ast(ASTNode* node);
+void print_token_stream(const char* input);
+void proc_test_file(const char* filename);
 
 #endif /* PARSER_H */
