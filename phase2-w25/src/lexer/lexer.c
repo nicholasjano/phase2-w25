@@ -10,8 +10,8 @@
 // All global variables must be reset between files
 static int current_line = 1;
 static int current_column = 1; 
-static char last_token_type = 'x'; // For checking consecutive operators
-static int in_error_recovery = 0; // Flag for error recovery mode 
+static char last_token_type = 'x';
+static int in_error_recovery = 0;
 
 // Add variables to track stored errors
 #define MAX_STORED_ERRORS 10
