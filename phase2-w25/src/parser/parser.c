@@ -16,7 +16,7 @@ static const char *source;
 static int error_reporting_enabled = 1;
 static int last_reported_line = 0;
 static int last_reported_column = 0;
-static int error_count = 0;  // Track number of errors
+static int error_count = 0;
 
 // Forward declarations for utility functions
 void parse_error(ParseError error, Token token);
@@ -61,7 +61,6 @@ static void reset_parser_state(void) {
     reset_lexer();
 }
 
-// Error reporting - now public to be called from more places
 void parse_error(ParseError error, Token token) {
     // Only report errors if reporting is enabled
     if (!error_reporting_enabled) {
@@ -127,7 +126,7 @@ static void advance(void) {
     
     // Skip comments and error tokens during error recovery
     while (current_token.type == TOKEN_ERROR || current_token.type == TOKEN_SKIP || current_token.type == TOKEN_COMMENT) {
-        // The error reporting is now handled by the lexer, we don't need to do it here
+        // The error reporting is now handled by the lexer not here
         current_token = get_next_token(source, &position);
     }
 }
@@ -152,7 +151,7 @@ static int match(TokenType type) {
     return current_token.type == type;
 }
 
-// Try to synchronize after an error (enhanced error recovery)
+// Try to synchronize after an error
 static void synchronize(void) {
     // Skip tokens until we find a statement boundary or synchronization point
     advance(); // Skip the current token that caused the error
@@ -279,7 +278,7 @@ static ASTNode *parse_primary_expression(void) {
             return node;
         }
         
-        // Empty parentheses - create a dummy argument
+        // Empty parentheses, create a dummy argument
         if (match(TOKEN_RPAREN)) {
             node->left = create_node(AST_NUMBER);
             node->left->token.lexeme[0] = '0';
@@ -303,7 +302,7 @@ static ASTNode *parse_primary_expression(void) {
     } else if (match(TOKEN_LPAREN)) {
         advance(); // Consume '('
         
-        // Empty parentheses - create a dummy expression
+        // Empty parentheses, create a dummy expression
         if (match(TOKEN_RPAREN)) {
             node = create_node(AST_NUMBER);
             node->token.lexeme[0] = '0';
@@ -326,7 +325,7 @@ static ASTNode *parse_primary_expression(void) {
         node = create_node(AST_STRING);
         advance();
     } else {
-        // Invalid expression - this is where many errors are caught
+        // Invalid expression (errors caught)
         parse_error(PARSE_ERROR_INVALID_EXPRESSION, current_token);
         synchronize();
         // Create a dummy node to allow parsing to continue
@@ -627,7 +626,7 @@ static ASTNode *parse_assignment(void) {
     return node;
 }
 
-// Parse block with improved handling
+// Parse block statement
 static ASTNode *parse_block(void) {
     if (!match(TOKEN_LBRACE)) {
         parse_error(PARSE_ERROR_BLOCK_BRACES, current_token);
@@ -670,7 +669,7 @@ static ASTNode *parse_block(void) {
     return block;
 }
 
-// Parse if statement with enhanced error handling
+// Parse if statement
 static ASTNode *parse_if_statement(void) {
     ASTNode *node = create_node(AST_IF);
     Token if_token = current_token; // Save for error reporting
@@ -716,7 +715,7 @@ static ASTNode *parse_if_statement(void) {
     return node;
 }
 
-// Parse while loop with enhanced error handling
+// Parse while loop
 static ASTNode *parse_while_statement(void) {
     ASTNode *node = create_node(AST_WHILE);
     Token while_token = current_token; // Save for error reporting
@@ -805,7 +804,7 @@ static ASTNode *parse_repeat_until_statement(void) {
     return node;
 }
 
-// Parse print statement: tnirp expression;
+// Parse print statement
 static ASTNode *parse_print_statement(void) {
     ASTNode *node = create_node(AST_PRINT);
     // Remove the unused variable
@@ -853,6 +852,7 @@ static ASTNode *parse_return_statement(void) {
 
 // Parse statement
 static ASTNode *parse_statement(void) {
+
     if (match(TOKEN_INT) || match(TOKEN_FLOAT_KEY) || match(TOKEN_CHAR) ||
         match(TOKEN_VOID) || match(TOKEN_LONG) || match(TOKEN_SHORT) ||
         match(TOKEN_DOUBLE) || match(TOKEN_SIGNED) || match(TOKEN_UNSIGNED)) {
@@ -922,7 +922,7 @@ static ASTNode *parse_statement(void) {
     }
 }
 
-// Parse program with improved function handling
+// Parse program (multiple statements)
 static ASTNode *parse_program(void) {
     ASTNode *program = create_node(AST_PROGRAM);
     
@@ -931,7 +931,7 @@ static ASTNode *parse_program(void) {
         return program;
     }
     
-    // Special case - top level is usually a function declaration in C
+    // Function declaration check
     if (match(TOKEN_INT) || match(TOKEN_VOID) || match(TOKEN_CHAR) ||
         match(TOKEN_FLOAT_KEY) || match(TOKEN_LONG) || match(TOKEN_SHORT) ||
         match(TOKEN_DOUBLE)) {
@@ -994,7 +994,7 @@ ASTNode *parse(void) {
     return result;
 }
 
-// Print AST for debugging (enhanced for new node types)
+// Print AST
 void print_ast(ASTNode *node, int level) {
     if (!node) return;
 
@@ -1063,7 +1063,7 @@ void print_ast(ASTNode *node, int level) {
     print_ast(node->right, level + 1);
 }
 
-// Print token stream for debugging
+// Print the token input stream
 void print_token_stream(const char* input) {
     Token token;
     int temp_pos = 0;
@@ -1082,7 +1082,7 @@ void free_ast(ASTNode *node) {
     free(node);
 }
 
-// Process test files
+/* Process test files */
 void proc_test_file(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -1138,6 +1138,5 @@ int main() {
     // Test with both valid and invalid inputs
     proc_test_file("../test/input_valid.txt");
     proc_test_file("../test/input_invalid.txt");
-    
     return 0;
 }

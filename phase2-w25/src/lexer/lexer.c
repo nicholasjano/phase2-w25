@@ -10,11 +10,11 @@
 // All global variables must be reset between files
 static int current_line = 1;
 static int current_column = 1; 
-static char last_token_type = 'x';
-static int in_error_recovery = 0;
+static char last_token_type = 'x'; // For checking consecutive operators
+static int in_error_recovery = 0; // Flag for error recovery mode 
 
 // Add variables to track stored errors
-#define MAX_STORED_ERRORS 10
+#define MAX_STORED_ERRORS 50000
 static struct {
     char lexeme[100];
     int line;
@@ -40,17 +40,17 @@ void reset_all_globals(void) {
     }
 }
 
-// Clear stored errors - this is now just a wrapper for reset_all_globals
+// Clear stored errors
 void clear_error_state(void) {
     num_stored_errors = 0;
 }
 
-// Reset the lexer state - this is now just a wrapper for reset_all_globals 
+// Reset the lexer state
 void reset_lexer(void) {
     reset_all_globals();
 }
 
-// advance_position and update column count 
+// advance position and update column count 
 static void advance_position(int *pos) {
     (*pos)++; 
     current_column++; 
@@ -84,7 +84,7 @@ static void store_error(ErrorType error, int line, int column, const char *lexem
     stored_errors[num_stored_errors].lexeme[sizeof(stored_errors[0].lexeme) - 1] = '\0';
     num_stored_errors++;
     
-    // Report the error immediately - this is important
+    // Report the error immediately
     printf("Lexical Error at line %d, column %d: ", line, column);
     switch(error) {
         case ERROR_CONSECUTIVE_OPERATORS:
@@ -594,7 +594,7 @@ Token get_next_token(const char* input, int* pos) {
 
     c = input[*pos];
     token.column = current_column; 
-    token.line = current_line; // Ensure line is set correctly
+    token.line = current_line;
 
     // Handle Comments 
     if(c == '/' && input[*pos + 1] == '/'){
@@ -641,7 +641,7 @@ Token get_next_token(const char* input, int* pos) {
     }
 
 
-    // Handle pointer operator (Special case)
+    // Handle pointer operator
     if (c == '*' && (last_token_type == 'k' || last_token_type == 'i')) {
         token.type = TOKEN_POINTER;
         token.lexeme[0] = c;
@@ -718,7 +718,6 @@ Token get_next_token(const char* input, int* pos) {
                 token.lexeme[1] = '\0';
                 token.recovery = RECOVERY_TO_DELIMITER;
                 
-                // Store the error information
                 store_error(ERROR_CONSECUTIVE_OPERATORS, current_line, current_column, token.lexeme);
                 
                 advance_position(pos);
@@ -774,7 +773,6 @@ Token get_next_token(const char* input, int* pos) {
     token.lexeme[1] = '\0';
     token.recovery = RECOVERY_TO_DELIMITER;
     
-    // Store the error with correct line/column
     store_error(ERROR_INVALID_CHAR, current_line, current_column, token.lexeme);
     
     advance_position(pos);
