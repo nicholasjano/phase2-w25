@@ -425,7 +425,6 @@ void print_token_stream(const char* input){
     } while(token.type != TOKEN_EOF);
 }
 
-
 // Free AST memory
 void free_ast(ASTNode *node) {
     if (!node) return;
@@ -433,6 +432,7 @@ void free_ast(ASTNode *node) {
     free_ast(node->right);
     free(node);
 }
+
 
 /* Process test files */
 void proc_test_file(const char *filename) {
