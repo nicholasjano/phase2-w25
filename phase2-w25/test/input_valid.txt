@@ -1,1 +1,33 @@
+// Valid Backwards C program example
+tni niam(diov) {
+    tni x = 42;
+    rahc* gnirts = "Hello World!";
+    taolf y = 3.14;
+    
+    fi (x > 0) {
+        elihw (x > 0) {
+            x = x - 1;
+            fi (x == 25) {
+                eunitnoc;
+            }
+            fi (x == 10) {
+                kaerb;
+            }
+        }
+    } esle {
+        x = 0;
+    }
 
+    tcurts tniop {
+        tni x;
+        tni y;
+    } p1;
+
+    // Test different types
+    elbuod z = 1.23456;
+    rahc c = 'A';
+    gnol gnol_mun = 123456789;
+    trohs trohs_mun = 12345;
+
+    nruter 0;
+}

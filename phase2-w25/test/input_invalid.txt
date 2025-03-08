@@ -1,1 +1,25 @@
+// Invalid Backwards C program with lexical errors
+tni niam(diov) {
+    // Invalid identifier with special character
+    tni x@ = 42;
 
+    // Unterminated string
+    rahc* gnirts = "Hello World;
+
+    // Invalid number format
+    tni y = 042.1.2;
+
+    // Invalid operators (consecutive)
+    x === 5;
+
+    // Invalid character in identifier
+    tni my#var = 10;
+
+    // Invalid escape sequence in string
+    rahc* rts = "Hello\k World";
+
+    // String that's too long (over token limit)
+    rahc* gnol_gnirts = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long string";
+
+    nruter 0;
+}

@@ -11,7 +11,13 @@ typedef enum {
     AST_ASSIGN,         // Assignment (x = 5)
     AST_PRINT,          // Print statement
     AST_NUMBER,         // Number literal
+    AST_OPERATOR,       // Operators such as +,-,*,/
     AST_IDENTIFIER,     // Variable name
+    AST_IF,             // IF keyword
+    AST_WHILE,          // WHILE keyword   
+    AST_FOR,            // FOR keyword
+    AST_BLOCK,          // BLOCK keyword
+    AST_BINOP           // Binary operations 
     // TODO: Add more node types as needed
 } ASTNodeType;
 
@@ -21,6 +27,11 @@ typedef enum {
     PARSE_ERROR_MISSING_SEMICOLON,
     PARSE_ERROR_MISSING_IDENTIFIER,
     PARSE_ERROR_MISSING_EQUALS,
+    PARSE_ERROR_MISSING_PARENTHESES, 
+    PARSE_ERROR_MISSING_CONDITION, 
+    PARSE_ERROR_BLOCK_BRACES, 
+    PARSE_ERROR_INVALID_OPERATOR,
+    PARSE_ERROR_INVALID_FUNCTION_CALL, 
     PARSE_ERROR_INVALID_EXPRESSION
 } ParseError;
 
