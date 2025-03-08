@@ -43,6 +43,21 @@ static void parse_error(ParseError error, Token token) {
         case PARSE_ERROR_MISSING_EQUALS:
             printf("Expected '=' after '%s'\n", token.lexeme);
             break;
+        case PARSE_ERROR_MISSING_PARENTHESES:
+            printf("Expected parenthesis in '%s' \n", token.lexeme);
+            break;
+        case PARSE_ERROR_MISSING_CONDITION:
+            printf("Expected condition in '%s' \n", token.lexeme);
+            break;
+        case PARSE_ERROR_BLOCK_BRACES:
+            printf("Missing braces in '%s' \n", token.lexeme);
+            break; 
+        case PARSE_ERROR_INVALID_OPERATOR:
+            printf("Invalid Operator in '%s' \n", token.lexeme);
+            break; 
+        case PARSE_ERROR_INVALID_FUNCTION_CALL:
+            printf("Invalid Function Call in '%s' \n", token.lexeme);
+            break; 
         case PARSE_ERROR_INVALID_EXPRESSION:
             printf("Invalid expression after '%s'\n", token.lexeme);
             break;
@@ -94,13 +109,10 @@ static ASTNode *parse_statement(void);
 // static ASTNode* parse_block(void) { ... }
 // static ASTNode* parse_factorial(void) { ... }
 
+// Forward declarations
+static ASTNode *parse_statement(void);
+
 static ASTNode *parse_expression(void);
-static ASTNode *parse_block(void);
-static ASTNode *parse_if_statement(void);
-static ASTNode *parse_while_statement(void);
-static ASTNode *parse_repeat_statement(void);
-static ASTNode *parse_print_statement(void);
-static ASTNode *parse_factorial(void);
 
 // Parse variable declaration: int x;
 static ASTNode *parse_declaration(void) {
@@ -212,10 +224,10 @@ static ASTNode *parse_while_statement(void) {
 
 // Parse repeat-until loop
 static ASTNode *parse_repeat_statement(void) {
-    ASTNode *node = create_node(AST_REPEAT);
+    ASTNode *node = create_node(AST_FOR);
     advance(); // Consume 'repeat'
     node->left = parse_block(); // Loop body
-    if(!match(TOKEN_REPEAT)){
+    if(!match(TOKEN_FOR)){
         return NULL; //error message here for missing repeat param
         exit(1);
     }
@@ -272,14 +284,12 @@ static ASTNode *parse_statement(void) {
         return parse_if_statement();
     } else if (match(TOKEN_WHILE)) {
         return parse_while_statement();
-    } else if (match(TOKEN_REPEAT)) {
+    } else if (match(TOKEN_FOR)) {
         return parse_repeat_statement();
     } else if (match(TOKEN_PRINT)) {
         return parse_print_statement();
     } else if (match(TOKEN_LBRACE)) {
         return parse_block();
-    }  else if (match(TOKEN_RBRACE)) {
-        return create_node(AST_BLOCK_END);
     }
 
     // TODO 4: Add cases for new statement types
@@ -312,7 +322,12 @@ static ASTNode *parse_expression(void) {
     } else if (match(TOKEN_IDENTIFIER)) {
         node = create_node(AST_IDENTIFIER);
         advance();
-    } else {
+    }
+    else if(match(TOKEN_OPERATOR)){
+        node = create_node(AST_OPERATOR);
+        advance(); 
+    }
+    else {
         printf("Syntax Error: Expected expression\n");
         exit(1);
     }
@@ -372,27 +387,24 @@ void print_ast(ASTNode *node, int level) {
         case AST_IDENTIFIER:
             printf("Identifier: %s\n", node->token.lexeme);
             break;
-        case AST_IF:
-            printf("If: %s\n", node->token.lexeme);
+        // TODO 6: Add cases for new node types (DONE for Now)
+        case AST_IF: 
+            printf("If\n"); 
             break;
-        case AST_WHILE:
-            printf("While: %s\n", node->token.lexeme);
+        case AST_WHILE: 
+            printf("While\n"); 
             break;
-        case AST_REPEAT:
-            printf("Repeat-Until: %s\n", node->token.lexeme);
+        case AST_FOR: 
+            printf("For\n"); 
             break;
-        case AST_BLOCK:
-            printf("Block: %s\n", node->token.lexeme);
+        case AST_BLOCK: 
+            printf("Block\n"); 
             break;
-        case AST_BINOP:
-            printf("BinaryOp: %s\n", node->token.lexeme);
+        case AST_BINOP: 
+            printf("BinaryOp: %s\n", node->token.lexeme); 
             break;
-        // TODO 6: Add cases for new node types
-        // case AST_IF: printf("If\n"); break;
-        // case AST_WHILE: printf("While\n"); break;
-        // case AST_REPEAT: printf("Repeat-Until\n"); break;
-        // case AST_BLOCK: printf("Block\n"); break;
-        // case AST_BINOP: printf("BinaryOp: %s\n", node->token.lexeme); break;
+
+
         default:
             printf("Unknown node type\n");
     }
@@ -400,6 +412,15 @@ void print_ast(ASTNode *node, int level) {
     // Print children
     print_ast(node->left, level + 1);
     print_ast(node->right, level + 1);
+}
+
+// Print the token input stream
+void print_token_stream(const char* input){ 
+    Token token; 
+    do{
+        token = get_next_token(input, &pos2);
+        print_token(token);
+    } while(token.type != TOKEN_EOF);
 }
 
 // Free AST memory
@@ -410,23 +431,54 @@ void free_ast(ASTNode *node) {
     free(node);
 }
 
-// Main function for testing
-int main() {
-    // Test with both valid and invalid inputs
-    const char *input = "int x;\n" // Valid declaration
-            "x = 42;\n"; // Valid assignment;
-    // TODO 8: Add more test cases and read from a file:
-    const char *invalid_input = "int x;\n"
-                                "x = 42;\n"
-                                "int ;";
-
-    printf("Parsing input:\n%s\n", invalid_input);
-    parser_init(invalid_input);
+/* Process test files */
+void proc_test_file(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Could not open file %s\n", filename);
+        return;
+    }
+    
+    char buffer[2048];
+    size_t len = fread(buffer, 1, sizeof(buffer) - 1, file);
+    buffer[len] = '\0';
+    fclose(file);
+    
+    printf("Parsing input:\n%s\n", buffer);
+    parser_init(buffer);
     ASTNode *ast = parse();
 
     printf("\nAbstract Syntax Tree:\n");
     print_ast(ast, 0);
 
     free_ast(ast);
+}
+
+
+// Main function for testing
+int main() {
+    // // Test with both valid and invalid inputs
+    // const char *valid_input = "tni x;\n" // Valid declaration
+    //         "x = 42;\n"; // Valid assignment;
+
+    // TODO 8: Add more test cases and read from a file: (DONE)
+    proc_test_file("test/input_valid.txt");
+    proc_test_file("test/input_invalid.txt");
+
+    // const char *invalid_input = "tni x;\n"
+    //                             "x = 42;\n"
+    //                             "tni ;";
+
+    // printf("TOKEN Stream: \n");
+    // print_token_stream(valid_input);
+
+    // printf("Parsing input:\n%s\n", valid_input);
+    // parser_init(valid_input);
+    // ASTNode *ast = parse();
+
+    // printf("\nAbstract Syntax Tree:\n");
+    // print_ast(ast, 0);
+
+    // free_ast(ast);
     return 0;
 }
