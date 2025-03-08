@@ -606,7 +606,6 @@ Token get_next_token(const char* input, int* pos) {
         return token;
     }
 
-
     // Handle Delimiter 
     if (strchr("(){}[];,", c)) {
         token.lexeme[0] = c;
@@ -750,3 +749,4 @@ void process_test_file(const char *filename) {
 //     // process_test_file("test/input_invalid.txt");
 //     return 0;
 // }
+
