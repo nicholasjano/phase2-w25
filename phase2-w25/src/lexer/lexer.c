@@ -606,6 +606,7 @@ Token get_next_token(const char* input, int* pos) {
         return token;
     }
 
+
     // Handle Delimiter 
     if (strchr("(){}[];,", c)) {
         token.lexeme[0] = c;
