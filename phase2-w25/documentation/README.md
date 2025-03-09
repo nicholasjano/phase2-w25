@@ -2,9 +2,7 @@
 
 ## Parser Overview
 
-This parser is the second phase for the "Backwards C" compiler. It takes the token stream from the lexical analyzer (Phase 1, but also updated here) and transforms it into an Abstract Syntax Tree (AST) representation of the program.
-
-Our parser uses a recursive descent approach with precedence climbing for expressions, allowing it to correctly handle operator precedence and nested constructs. It creates an AST representation that captures the full syntaxical structure of the input code.
+This parser is the second phase for the "Backwards C" compiler. It takes the token stream from the lexical analyzer (Phase 1, but also updated here) and transforms it into an Abstract Syntax Tree (AST) representation of the program. Our parser uses a recursive descent approach with precedence climbing for expressions, allowing it to correctly handle operator precedence and nested constructs.
 
 Key components of the parser implementation include:
 - Token consumption and matching functions
@@ -15,14 +13,14 @@ Key components of the parser implementation include:
 
 ## Features
 
-- **Comprehensive Expression Parsing**
+- **Expression Parsing**
   - Full arithmetic operator support (+, -, *, /)
   - Comparison operators (<, >, ==, !=, <=, >=)
   - Logical operators (&&, ||)
   - Proper operator precedence handling
   - Parenthesized expressions for grouping
 
-- **Diverse Statement Types**
+- **Statement Types**
   - Variable declarations with optional initialization
   - Assignment statements
   - Conditional statements (if-else)
@@ -46,7 +44,7 @@ Key components of the parser implementation include:
 
 - **AST Generation and Visualization**
   - Creation of a comprehensive Abstract Syntax Tree
-  - Tree visualization for debugging and educational purposes
+  - Tree visualization for debugging
   - Memory management for AST nodes
   - Support for complex nested structures
 
