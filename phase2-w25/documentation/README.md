@@ -4,7 +4,7 @@
 
 This parser is the second phase for the "Backwards C" compiler. It takes the token stream from the lexical analyzer (Phase 1, but also updated here) and transforms it into an Abstract Syntax Tree (AST) representation of the program.
 
-Our parser follows a recursive descent approach with precedence climbing for expressions, allowing it to correctly handle operator precedence and nested constructs. It validates the syntaxical structure of the input according to the language grammar rules we made and creates a hierarchical tree representation.
+Our parser uses a recursive descent approach with precedence climbing for expressions, allowing it to correctly handle operator precedence and nested constructs. It creates an AST representation that captures the full syntaxical structure of the input code.
 
 Key components of the parser implementation include:
 - Token consumption and matching functions
@@ -143,5 +143,3 @@ tni fact = lairotcaf(5);  // Computes 5!
 tnirp "Hello, world!";
 tnirp x + y;
 ```
-
-The parser can handle complex nested structures and combinations of these language features, creating an AST representation that captures the full syntaxical structure of the input code.
