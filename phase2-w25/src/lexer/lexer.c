@@ -7,21 +7,51 @@
 #include "../../include/tokens.h"
 #include "../../include/lexer.h"
 
+// All global variables must be reset between files
 static int current_line = 1;
 static int current_column = 1; 
 static char last_token_type = 'x'; // For checking consecutive operators
 static int in_error_recovery = 0; // Flag for error recovery mode 
 
-// Reset the lexer state 
-static void reset_lexer(){
+// Add variables to track stored errors
+#define MAX_STORED_ERRORS 50000
+static struct {
+    char lexeme[100];
+    int line;
+    int column;
+    ErrorType error_type;
+} stored_errors[MAX_STORED_ERRORS];
+static int num_stored_errors = 0;
+
+// Reset all global variables after each file
+void reset_all_globals(void) {
     current_line = 1; 
     current_column = 1; 
     last_token_type = 'x';
     in_error_recovery = 0;
+    num_stored_errors = 0;
+    
+    // Clear stored errors array
+    for (int i = 0; i < MAX_STORED_ERRORS; i++) {
+        stored_errors[i].lexeme[0] = '\0';
+        stored_errors[i].line = 0;
+        stored_errors[i].column = 0;
+        stored_errors[i].error_type = ERROR_NONE;
+    }
 }
 
-// advance_position and update column count 
-static void advance_position(int *pos){
+// Clear stored errors
+void clear_error_state(void) {
+    num_stored_errors = 0;
+}
+
+// Reset the lexer state
+void reset_lexer(void) {
+    reset_all_globals();
+}
+
+// advance position and update column count 
+static void advance_position(int *pos) {
     (*pos)++; 
     current_column++; 
 }
@@ -36,6 +66,35 @@ static void skip_until(const char *input, int *pos, const char *delimiters) {
             current_column++;
         }
         (*pos)++;
+    }
+}
+
+// Store an error for immediate reporting
+static void store_error(ErrorType error, int line, int column, const char *lexeme) {
+    // Don't store errors if we already have too many
+    if (num_stored_errors >= MAX_STORED_ERRORS) {
+        return;
+    }
+    
+    // Store the error
+    stored_errors[num_stored_errors].error_type = error;
+    stored_errors[num_stored_errors].line = line;
+    stored_errors[num_stored_errors].column = column;
+    strncpy(stored_errors[num_stored_errors].lexeme, lexeme, sizeof(stored_errors[0].lexeme) - 1);
+    stored_errors[num_stored_errors].lexeme[sizeof(stored_errors[0].lexeme) - 1] = '\0';
+    num_stored_errors++;
+    
+    // Report the error immediately
+    printf("Lexical Error at line %d, column %d: ", line, column);
+    switch(error) {
+        case ERROR_CONSECUTIVE_OPERATORS:
+            printf("Consecutive operators not allowed\n");
+            break;
+        case ERROR_INVALID_CHAR:
+            printf("Invalid token '%s'\n", lexeme);
+            break;
+        default:
+            printf("Unknown error\n");
     }
 }
 
@@ -74,9 +133,12 @@ static struct {
     {"taolf", TOKEN_FLOAT_KEY},
     {"elbuod", TOKEN_DOUBLE},
     {"esle", TOKEN_ELSE}, 
-    {"diov*", TOKEN_VOID},
+    {"diov*", TOKEN_VOID_STAR},
     {"tni*", TOKEN_INT_STAR},
-    {"tnirp", TOKEN_PRINT}, 
+    {"tnirp", TOKEN_PRINT},
+    {"taeper", TOKEN_REPEAT},
+    {"litnu", TOKEN_UNTIL},
+    {"lairotcaf", TOKEN_FACTORIAL}
 };
 
 // Check if a string is a keyword 
@@ -159,6 +221,24 @@ void print_token(Token token) {
         case TOKEN_OPERATOR:
             printf("OPERATOR");
             break;
+        case TOKEN_EQUALS_EQUALS:
+            printf("EQUALS_EQUALS");
+            break;
+        case TOKEN_NOT_EQUALS:
+            printf("NOT_EQUALS");
+            break;
+        case TOKEN_LOGICAL_AND:
+            printf("LOGICAL_AND");
+            break;
+        case TOKEN_LOGICAL_OR:
+            printf("LOGICAL_OR");
+            break;
+        case TOKEN_GREATER_EQUALS:
+            printf("GREATER_EQUALS");
+            break;
+        case TOKEN_LESS_EQUALS:
+            printf("LESS_EQUALS");
+            break;
         case TOKEN_IDENTIFIER:
             printf("IDENTIFIER");
             break;
@@ -191,6 +271,9 @@ void print_token(Token token) {
             break;
         case TOKEN_RBRACE:     
             printf("RBRACE"); 
+            break;
+        case TOKEN_COMMA:
+            printf("COMMA");
             break;
         case TOKEN_IF:         
             printf("IF"); 
@@ -287,6 +370,15 @@ void print_token(Token token) {
             break;
         case TOKEN_PRINT:      
             printf("PRINT"); 
+            break;
+        case TOKEN_REPEAT:
+            printf("REPEAT");
+            break;
+        case TOKEN_UNTIL:
+            printf("UNTIL");
+            break;
+        case TOKEN_FACTORIAL:
+            printf("FACTORIAL");
             break;
         case TOKEN_EOF:        
             printf("EOF"); 
@@ -476,7 +568,7 @@ Token get_next_token(const char* input, int* pos) {
             in_error_recovery = 0; // Reset error recovery at new line 
         }
         else {
-            current_column ++; 
+            current_column++; 
         }
         (*pos)++;
     }
@@ -484,6 +576,8 @@ Token get_next_token(const char* input, int* pos) {
     if (input[*pos] == '\0') {
         token.type = TOKEN_EOF;
         strcpy(token.lexeme, "EOF");
+        token.line = current_line;
+        token.column = current_column;
         return token;
     }
 
@@ -491,6 +585,8 @@ Token get_next_token(const char* input, int* pos) {
     if (in_error_recovery) {
         token.type = TOKEN_SKIP;
         token.error = ERROR_RECOVERY_MODE;
+        token.line = current_line;
+        token.column = current_column;
         skip_until(input, pos, ";\n");
         in_error_recovery = 0;
         return token;
@@ -498,6 +594,7 @@ Token get_next_token(const char* input, int* pos) {
 
     c = input[*pos];
     token.column = current_column; 
+    token.line = current_line;
 
     // Handle Comments 
     if(c == '/' && input[*pos + 1] == '/'){
@@ -511,17 +608,6 @@ Token get_next_token(const char* input, int* pos) {
 
     // Handle numbers
     if (isdigit(c)) {
-        // int i = 0;
-        // do {
-        //     token.lexeme[i++] = c;
-        //     (*pos)++;
-        //     c = input[*pos];
-        // } while (isdigit(c) && i < sizeof(token.lexeme) - 1);
-
-        // token.lexeme[i] = '\0';
-        // token.type = TOKEN_NUMBER;
-        // return token;
-
         return handle_number(input, pos);
     }
 
@@ -555,7 +641,7 @@ Token get_next_token(const char* input, int* pos) {
     }
 
 
-    // Handle pointer operator (Special case)
+    // Handle pointer operator
     if (c == '*' && (last_token_type == 'k' || last_token_type == 'i')) {
         token.type = TOKEN_POINTER;
         token.lexeme[0] = c;
@@ -567,37 +653,80 @@ Token get_next_token(const char* input, int* pos) {
 
     // Handle Operators 
     if (strchr("+-*/=<>!&|", c)) {
-        if (last_token_type == 'o') {
-            token.error = ERROR_CONSECUTIVE_OPERATORS;
+        // Single character operators and equality operators
+        if (c == '=') {
             token.lexeme[0] = c;
-            token.lexeme[1] = '\0';
-            token.recovery = RECOVERY_TO_DELIMITER;
-            advance_position(pos);
-            in_error_recovery = 1;
-            return token;
-        }
-        
-        if(c == '='){
-            token.type = TOKEN_EQUALS; 
-        }
-        else{
-            token.type = TOKEN_OPERATOR; 
-        }
-        token.lexeme[0] = c;
-        
-        // Check for two-character operators
-        char next = input[*pos + 1];
-        if ((c == '=' && next == '=') ||
-            (c == '!' && next == '=') ||
-            (c == '<' && next == '=') ||
-            (c == '>' && next == '=') ||
-            (c == '&' && next == '&') ||
-            (c == '|' && next == '|')) {
-            token.lexeme[1] = next;
+            if (input[*pos + 1] == '=') {
+                token.type = TOKEN_EQUALS_EQUALS;
+                token.lexeme[1] = '=';
+                token.lexeme[2] = '\0';
+                *pos += 2;
+                current_column += 2;
+            } else {
+                token.type = TOKEN_EQUALS;
+                token.lexeme[1] = '\0';
+                advance_position(pos);
+            }
+        } 
+        // Logical operators
+        else if (c == '&' && input[*pos + 1] == '&') {
+            token.type = TOKEN_LOGICAL_AND;
+            token.lexeme[0] = '&';
+            token.lexeme[1] = '&';
             token.lexeme[2] = '\0';
             *pos += 2;
             current_column += 2;
-        } else {
+        }
+        else if (c == '|' && input[*pos + 1] == '|') {
+            token.type = TOKEN_LOGICAL_OR;
+            token.lexeme[0] = '|';
+            token.lexeme[1] = '|';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        // Comparison operators
+        else if (c == '!' && input[*pos + 1] == '=') {
+            token.type = TOKEN_NOT_EQUALS;
+            token.lexeme[0] = '!';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        else if (c == '<' && input[*pos + 1] == '=') {
+            token.type = TOKEN_LESS_EQUALS;
+            token.lexeme[0] = '<';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        else if (c == '>' && input[*pos + 1] == '=') {
+            token.type = TOKEN_GREATER_EQUALS;
+            token.lexeme[0] = '>';
+            token.lexeme[1] = '=';
+            token.lexeme[2] = '\0';
+            *pos += 2;
+            current_column += 2;
+        }
+        // Basic operators
+        else {
+            if (last_token_type == 'o') {
+                token.error = ERROR_CONSECUTIVE_OPERATORS;
+                token.lexeme[0] = c;
+                token.lexeme[1] = '\0';
+                token.recovery = RECOVERY_TO_DELIMITER;
+                
+                store_error(ERROR_CONSECUTIVE_OPERATORS, current_line, current_column, token.lexeme);
+                
+                advance_position(pos);
+                in_error_recovery = 1;
+                return token;
+            }
+            
+            token.type = TOKEN_OPERATOR;
+            token.lexeme[0] = c;
             token.lexeme[1] = '\0';
             advance_position(pos);
         }
@@ -626,8 +755,11 @@ Token get_next_token(const char* input, int* pos) {
             case '}':
                 token.type = TOKEN_RBRACE;
                 break;
+            case ',':
+                token.type = TOKEN_COMMA;
+                break;
             default:
-                token.error = ERROR_INVALID_CHAR;
+                token.type = TOKEN_DELIMITER;
                 break;
         }
         advance_position(pos);
@@ -640,49 +772,12 @@ Token get_next_token(const char* input, int* pos) {
     token.lexeme[0] = c;
     token.lexeme[1] = '\0';
     token.recovery = RECOVERY_TO_DELIMITER;
+    
+    store_error(ERROR_INVALID_CHAR, current_line, current_column, token.lexeme);
+    
     advance_position(pos);
     in_error_recovery = 1;
     return token;
-
-
-    // //Handle Operator and Delimiter
-    // (*pos)++;
-    // token.lexeme[0] = c;
-    // token.lexeme[1] = '\0';
-
-    // switch(c) {
-    //     case '+': case '-': case '*': case '/':
-    //         if (last_token_type == 'o') {
-    //             token.error = ERROR_CONSECUTIVE_OPERATORS;
-    //             return token;
-    //         }
-    //         token.type = TOKEN_OPERATOR;
-    //         last_token_type = 'o';
-    //         break;
-    //     case '=':
-    //         token.type = TOKEN_EQUALS;
-    //         break;
-    //     case ';':
-    //         token.type = TOKEN_SEMICOLON;
-    //         break;
-    //     case '(':
-    //         token.type = TOKEN_LPAREN;
-    //         break;
-    //     case ')':
-    //         token.type = TOKEN_RPAREN;
-    //         break;
-    //     case '{':
-    //         token.type = TOKEN_LBRACE;
-    //         break;
-    //     case '}':
-    //         token.type = TOKEN_RBRACE;
-    //         break;
-    //     default:
-    //         token.error = ERROR_INVALID_CHAR;
-    //         break;
-    // }
-
-    // return token;
 }
 
 /* Process test files */
@@ -694,7 +789,7 @@ void process_test_file(const char *filename) {
     }
     
     // Reset lexer state for new file
-    reset_lexer();
+    reset_all_globals();
     
     char buffer[2048];
     size_t len = fread(buffer, 1, sizeof(buffer) - 1, file);
@@ -720,33 +815,3 @@ void process_test_file(const char *filename) {
     printf("\nEnd of %s\n", filename);
     printf("==============================\n");
 }
-
-// int main() {
-//     const char *input = "int x = 123;\n"   // Basic declaration and number
-//                        "test_var = 456;\n"  // Identifier and assignment
-//                        "print x;\n"         // Keyword and identifier
-//                        "if (y > 10) {\n"    // Keywords, identifiers, operators
-//                        "    @#$ invalid\n"  // Error case
-//                        "    x = ++2;\n"     // Consecutive operator error
-//                        "}";
-//
-//     printf("Analyzing input:\n%s\n\n", input);
-//     int position = 0;
-//     Token token;
-//
-//     do {
-//         token = get_next_token(input, &position);
-//         print_token(token);
-//     } while (token.type != TOKEN_EOF);
-//
-//     return 0;
-// }
-
-// This is a complete lexer for Backwards C
-
-// int main() {
-//     process_test_file("..\\test\\input_valid.txt");
-//     // process_test_file("test/input_invalid.txt");
-//     return 0;
-// }
-

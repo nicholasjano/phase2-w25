@@ -1,25 +1,75 @@
-// Invalid Backwards C program with lexical errors
+// Invalid Backwards C program example with multiple error types
 tni niam(diov) {
-    // Invalid identifier with special character
-    tni x@ = 42;
-
     // Unterminated string
-    rahc* gnirts = "Hello World;
-
-    // Invalid number format
-    tni y = 042.1.2;
-
-    // Invalid operators (consecutive)
-    x === 5;
-
-    // Invalid character in identifier
-    tni my#var = 10;
-
-    // Invalid escape sequence in string
-    rahc* rts = "Hello\k World";
-
-    // String that's too long (over token limit)
-    rahc* gnol_gnirts = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long string";
-
-    nruter 0;
+    tnirp "This string is not terminated;
+    
+    // Invalid escape sequence
+    tnirp "Invalid escape sequence: \z";
+    
+    // Consecutive operators (+++, &&&)
+    c = a +++ b;
+    fi (a && &&& b) {
+        tnirp "Multiple consecutive operators";
+    }
+    
+    // Missing semicolon
+    tni a = 10
+    
+    // Invalid expression
+    tni b = 20 + ;
+    
+    // Unbalanced parentheses
+    fi (c > 100 {
+        tnirp "Missing closing parenthesis";
+    }
+    
+    // Missing identifiers
+    tni = 30;
+    
+    // Unbalanced braces in while loop
+    elihw (a > 0) {
+        tnirp a;
+        a = a - 1;
+    
+    // Malformed repeat-until
+    taeper {
+        b = b + 1;
+        tnirp b;
+    litnu (b > 25);
+    
+    // Mismatched function call parentheses
+    tni factorial_result = lairotcaf);
+    
+    // Missing conditional expression
+    fi () {
+        tnirp "Missing condition";
+    }
+    
+    // Unterminated character literal
+    rahc invalid_char = 'x;
+    
+    // Unmatched else
+    esle {
+        tnirp "No matching if statement";
+    }
+    
+    // Incorrectly nested blocks
+    {
+        {
+            tnirp "Unbalanced block";
+    }
+    
+    // Invalid operators and syntax
+    fi (a === b || c &&& d) {
+        tnirp "Invalid logical operators";
+    }
+    
+    // Incomplete factorial call
+    lairotcaf(
+    
+    // Missing return value
+    nruter;
 }
+
+// Function definition without body
+tni rehtona_noitcnuf(diov);
